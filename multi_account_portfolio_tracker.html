@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多账户持仓管理系统 | 全中文美股港股持仓追踪</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#080d1a',
+                        darkCard: '#101728',
+                        darkBorder: '#1e293b',
+                        neonBlue: '#3b82f6',
+                        neonPurple: '#8b5cf6',
+                        neonCyan: '#06b6d4',
+                        neonGreen: '#10b981',
+                        neonAmber: '#f59e0b',
+                        neonRed: '#ef4444'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #080d1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        .time-pill-active {
+            background-color: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+        }
+        .time-pill-inactive {
+            background-color: rgba(30, 41, 59, 0.8);
+            color: #94a3b8;
+        }
+        .time-pill-inactive:hover {
+            color: #f8fafc;
+            background-color: rgba(51, 65, 85, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-gray-100 font-sans min-h-screen flex flex-col selection:bg-blue-600 selection:text-white">
+
+    <!-- 顶部导航栏 / Header -->
+    <header class="sticky top-0 z-40 border-b border-gray-800/80 bg-darkBg/90 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- 品牌标志 -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <i class="fa-solid fa-chart-line text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-blue-400 via-purple-300 to-cyan-400 bg-clip-text text-transparent">美股持仓管理助手</span>
+                            <span class="text-[10px] font-mono bg-blue-950/90 text-blue-400 border border-blue-800/60 px-2 py-0.5 rounded-full font-semibold">专业版</span>
+                        </div>
+                        <p class="text-xs text-gray-400 font-mono">每周持仓更新 &bull; 多账户投资组合</p>
+                    </div>
+                </div>
+
+                <!-- 桌面端主导航 Tab -->
+                <nav class="hidden md:flex space-x-1 bg-gray-900/90 p-1 rounded-xl border border-gray-800">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-md">
+                        <i class="fa-solid fa-gauge-high"></i> 仪表盘
+                    </button>
+                    <button onclick="switchTab('holdings')" id="nav-holdings" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-gray-200 transition-all duration-200 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check"></i> 持仓明细
+                    </button>
+                    <button onclick="switchTab('deposits')" id="nav-deposits" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-gray-200 transition-all duration-200 flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-right-arrow-left"></i> 出入金记录
+                    </button>
+                    <button onclick="switchTab('dividends')" id="nav-dividends" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-gray-200 transition-all duration-200 flex items-center gap-2">
+                        <i class="fa-solid fa-sack-dollar"></i> 股息记录
+                    </button>
+                </nav>
+
+                <!-- 账户管理 & 数据重置 -->
+                <div class="flex items-center space-x-2.5">
+                    <button onclick="openAccountModal()" class="px-3 py-1.5 rounded-lg border border-gray-700 bg-gray-800/80 text-xs font-medium text-gray-300 hover:bg-gray-700/80 hover:text-white transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-wallet text-blue-400"></i> 管理账户
+                    </button>
+                    <button onclick="resetToSampleData()" class="px-3 py-1.5 rounded-lg border border-gray-800 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition" title="重置为示范数据">
+                        <i class="fa-solid fa-rotate-left"></i> 重置演示
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 移动端导航 Row -->
+        <div class="md:hidden border-t border-gray-800 bg-gray-900/95 px-2 py-1.5 flex justify-around">
+            <button onclick="switchTab('dashboard')" id="m-nav-dashboard" class="mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-blue-400 font-medium">
+                <i class="fa-solid fa-gauge-high text-base mb-0.5"></i> 仪表盘
+            </button>
+            <button onclick="switchTab('holdings')" id="m-nav-holdings" class="mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-gray-400 hover:text-gray-200 font-medium">
+                <i class="fa-solid fa-list-check text-base mb-0.5"></i> 持仓
+            </button>
+            <button onclick="switchTab('deposits')" id="m-nav-deposits" class="mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-gray-400 hover:text-gray-200 font-medium">
+                <i class="fa-solid fa-arrow-right-arrow-left text-base mb-0.5"></i> 出入金
+            </button>
+            <button onclick="switchTab('dividends')" id="m-nav-dividends" class="mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-gray-400 hover:text-gray-200 font-medium">
+                <i class="fa-solid fa-sack-dollar text-base mb-0.5"></i> 股息
+            </button>
+        </div>
+    </header>
+
+    <!-- 主容器 / Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- 账户筛选条 & 回报率周期选择控制器 -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gray-900/70 p-3.5 rounded-2xl border border-gray-800">
+            <!-- 账户筛选按钮组 -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none" id="account-filter-bar">
+                <!-- 动态生成账户筛选按钮 -->
+            </div>
+
+            <!-- 回报率时间周期选择器 (周 / 月 / 年初至今 / 年) -->
+            <div class="flex items-center gap-2 bg-gray-950/80 p-1 rounded-xl border border-gray-800 self-start lg:self-auto">
+                <span class="text-xs text-gray-400 px-2 font-medium flex items-center gap-1">
+                    <i class="fa-solid fa-clock-rotate-left text-blue-400"></i> 回报率周期:
+                </span>
+                <button onclick="setReturnPeriod('1W')" id="btn-period-1W" class="time-pill-inactive px-3 py-1 rounded-lg text-xs font-medium font-mono transition-all">
+                    周 (1W)
+                </button>
+                <button onclick="setReturnPeriod('1M')" id="btn-period-1M" class="time-pill-inactive px-3 py-1 rounded-lg text-xs font-medium font-mono transition-all">
+                    月 (1M)
+                </button>
+                <button onclick="setReturnPeriod('YTD')" id="btn-period-YTD" class="time-pill-active px-3 py-1 rounded-lg text-xs font-medium font-mono transition-all">
+                    年初至今 (YTD)
+                </button>
+                <button onclick="setReturnPeriod('1Y')" id="btn-period-1Y" class="time-pill-inactive px-3 py-1 rounded-lg text-xs font-medium font-mono transition-all">
+                    近一年 (1Y)
+                </button>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 1: 仪表盘 / DASHBOARD -->
+        <!-- ========================================================================= -->
+        <section id="tab-dashboard" class="tab-content space-y-6">
+            
+            <!-- 顶部标题条（完全还原小红书排版） -->
+            <div class="flex flex-col md:flex-row md:items-baseline justify-between border-b border-gray-800 pb-4 gap-2">
+                <div>
+                    <div class="text-xs font-mono tracking-widest text-blue-400 uppercase font-semibold">每周持仓更新 &bull; #PORTFOLIOFRIDAY &bull; 第 03 期</div>
+                    <h1 class="text-3xl font-extrabold text-white tracking-tight mt-0.5">前 6 大核心持仓 <span class="text-gray-500 font-normal text-2xl" id="dash-holding-count-sub">与投资组合分析</span></h1>
+                </div>
+                <div class="text-xs text-gray-400 font-mono flex items-center gap-2">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>数据结算日期: 2026年10月24日 (美股收盘)</span>
+                </div>
+            </div>
+
+            <!-- 核心数据指标卡片组 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- 总市值 -->
+                <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800/90 hover:border-gray-700 transition">
+                    <div class="text-xs font-medium text-gray-400 uppercase tracking-wider">组合总市值</div>
+                    <div class="text-2xl font-bold font-mono text-white mt-1" id="dash-total-assets">$0.00</div>
+                    <div class="text-xs text-gray-400 mt-2 flex items-center justify-between">
+                        <span>净投入本金:</span>
+                        <span class="font-mono text-gray-300" id="dash-net-invested">$0.00</span>
+                    </div>
+                </div>
+
+                <!-- 未实现浮动盈亏 -->
+                <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800/90 hover:border-gray-700 transition">
+                    <div class="text-xs font-medium text-gray-400 uppercase tracking-wider">未实现浮动盈亏</div>
+                    <div class="text-2xl font-bold font-mono mt-1" id="dash-unrealized-pnl">$0.00</div>
+                    <div class="text-xs mt-2 flex items-center justify-between">
+                        <span class="text-gray-400">总盈亏比例:</span>
+                        <span class="font-mono font-semibold" id="dash-pnl-percent">0.00%</span>
+                    </div>
+                </div>
+
+                <!-- 当前所选周期收益率 (周/月/YTD/年) -->
+                <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800/90 hover:border-gray-700 transition">
+                    <div class="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                        <span id="dash-period-title">年初至今收益率</span>
+                        <span class="text-[10px] bg-blue-950 text-blue-400 px-1.5 py-0.5 rounded font-mono" id="dash-period-tag">YTD</span>
+                    </div>
+                    <div class="text-2xl font-bold font-mono text-emerald-400 mt-1" id="dash-selected-period-return">+19.0%*</div>
+                    <div class="text-xs text-gray-400 mt-2">组合加权估计回报</div>
+                </div>
+
+                <!-- 跑赢/跑输基准 -->
+                <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800/90 hover:border-gray-700 transition">
+                    <div class="text-xs font-medium text-gray-400 uppercase tracking-wider">基准相对表现 (vs QQQ)</div>
+                    <div class="text-2xl font-bold font-mono text-amber-400 mt-1" id="dash-alpha-return">+4.6%</div>
+                    <div class="text-xs text-emerald-400 mt-2 font-medium flex items-center gap-1">
+                        <i class="fa-solid fa-trophy text-amber-400 text-xs"></i> 跑赢纳斯达克100指数
+                    </div>
+                </div>
+
+                <!-- 累计股息收入 -->
+                <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800/90 hover:border-gray-700 transition">
+                    <div class="text-xs font-medium text-gray-400 uppercase tracking-wider">累计已收股息</div>
+                    <div class="text-2xl font-bold font-mono text-amber-400 mt-1" id="dash-total-dividends">$0.00</div>
+                    <div class="text-xs text-gray-400 mt-2 flex items-center justify-between">
+                        <span>预估年化股息:</span>
+                        <span class="font-mono text-amber-300 font-semibold" id="dash-annual-dividends">$0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 仪表盘下半部分: 核心持仓占比条形图 与 账户分布卡片 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 前列核心持仓占比图表 -->
+                <div class="lg:col-span-2 bg-gray-900/90 rounded-2xl p-6 border border-gray-800">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-simple text-blue-400"></i>
+                            核心持仓配置与周期回报率
+                        </h3>
+                        <span class="text-xs font-mono text-gray-400 bg-gray-800 px-2.5 py-1 rounded-full border border-gray-700">
+                            权重 Top 排行
+                        </span>
+                    </div>
+
+                    <div id="top-holdings-container" class="space-y-3">
+                        <!-- 由 JavaScript 动态渲染持仓占比与回报率胶囊标签 -->
+                    </div>
+
+                    <!-- 底部总结标签 -->
+                    <div class="mt-6 flex flex-wrap items-center gap-3 pt-4 border-t border-gray-800/80">
+                        <div class="bg-amber-950/70 border border-amber-500/50 text-amber-300 text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-award text-amber-400"></i>
+                            <span id="beating-badge">跑赢 QQQ 基准指数 +4.6%</span>
+                        </div>
+                        <div class="bg-blue-950/70 border border-blue-500/50 text-blue-300 text-xs px-3 py-1.5 rounded-full font-medium" id="top6-concentration-badge">
+                            前 6 大持仓占比 = 79% 组合资产
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 账户资产分布总结 -->
+                <div class="bg-gray-900/90 rounded-2xl p-6 border border-gray-800 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-pie-chart text-cyan-400"></i>
+                            各账户资产汇总 (Account Summary)
+                        </h3>
+                        <div id="account-cards-summary" class="space-y-3">
+                            <!-- 动态加载账户汇总 -->
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-800 text-[11px] text-gray-500 font-mono text-right">
+                        数据已实时本地安全存储 (LocalStorage)
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 2: 持仓明细 / HOLDINGS DETAILS -->
+        <!-- ========================================================================= -->
+        <section id="tab-holdings" class="tab-content hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-extrabold text-white">持仓明细管理 (Holdings Details)</h1>
+                    <p class="text-sm text-gray-400">录入与编辑各证券账户持仓、买入均价、当前价格及多周期回报率</p>
+                </div>
+                <button onclick="openHoldingModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl text-sm transition shadow-lg shadow-blue-600/30 flex items-center gap-2 self-start sm:self-auto">
+                    <i class="fa-solid fa-plus"></i> 添加股票/ETF持仓
+                </button>
+            </div>
+
+            <!-- 持仓表格 -->
+            <div class="bg-gray-900/90 rounded-2xl border border-gray-800 overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-800/60 text-xs text-gray-400 uppercase font-mono border-b border-gray-800">
+                            <tr>
+                                <th class="px-4 py-3.5">代码 / 名称</th>
+                                <th class="px-4 py-3.5">所属账户</th>
+                                <th class="px-4 py-3.5 text-right">持有数量</th>
+                                <th class="px-4 py-3.5 text-right">买入均价</th>
+                                <th class="px-4 py-3.5 text-right">当前价格</th>
+                                <th class="px-4 py-3.5 text-right">总成本</th>
+                                <th class="px-4 py-3.5 text-right">当前市值</th>
+                                <th class="px-4 py-3.5 text-right">浮动盈亏</th>
+                                <th class="px-4 py-3.5 text-right" id="th-period-header">回报率 (YTD)</th>
+                                <th class="px-4 py-3.5 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holdings-table-body" class="divide-y divide-gray-800/60 text-gray-200 font-mono">
+                            <!-- 动态加载持仓行 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 3: 出入金记录 / CASH FLOW -->
+        <!-- ========================================================================= -->
+        <section id="tab-deposits" class="tab-content hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-extrabold text-white">出入金记录 (Cash Flow Log)</h1>
+                    <p class="text-sm text-gray-400">记录每次账户资金存入与提取，精准计算投资净本金</p>
+                </div>
+                <button onclick="openDepositModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl text-sm transition shadow-lg shadow-emerald-600/30 flex items-center gap-2 self-start sm:self-auto">
+                    <i class="fa-solid fa-plus"></i> 登记出入金
+                </button>
+            </div>
+
+            <!-- 本金统计 Banner -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-gray-900/80 p-4 rounded-2xl border border-gray-800">
+                    <div class="text-xs text-gray-400">累计入金 (Total Deposit)</div>
+                    <div class="text-2xl font-bold font-mono text-emerald-400 mt-1" id="cf-total-in">$0.00</div>
+                </div>
+                <div class="bg-gray-900/80 p-4 rounded-2xl border border-gray-800">
+                    <div class="text-xs text-gray-400">累计出金 (Total Withdrawal)</div>
+                    <div class="text-2xl font-bold font-mono text-rose-400 mt-1" id="cf-total-out">$0.00</div>
+                </div>
+                <div class="bg-gray-900/80 p-4 rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-900 to-blue-950/40">
+                    <div class="text-xs text-blue-300">净投入本金 (Net Capital Invested)</div>
+                    <div class="text-2xl font-bold font-mono text-blue-400 mt-1" id="cf-net-capital">$0.00</div>
+                </div>
+            </div>
+
+            <!-- 出入金表格 -->
+            <div class="bg-gray-900/90 rounded-2xl border border-gray-800 overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-800/60 text-xs text-gray-400 uppercase font-mono border-b border-gray-800">
+                            <tr>
+                                <th class="px-4 py-3.5">日期</th>
+                                <th class="px-4 py-3.5">类型</th>
+                                <th class="px-4 py-3.5">所属账户</th>
+                                <th class="px-4 py-3.5 text-right">金额 (USD)</th>
+                                <th class="px-4 py-3.5">备注说明</th>
+                                <th class="px-4 py-3.5 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deposits-table-body" class="divide-y divide-gray-800/60 text-gray-200">
+                            <!-- 动态加载出入金表格 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 4: 股息记录 / DIVIDEND LOG -->
+        <!-- ========================================================================= -->
+        <section id="tab-dividends" class="tab-content hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-extrabold text-white">股息收入记录 (Dividend History)</h1>
+                    <p class="text-sm text-gray-400">登记各股票派发到的被动现金流，自动计算税后纯股息</p>
+                </div>
+                <button onclick="openDividendModal()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-xl text-sm transition shadow-lg shadow-amber-600/30 flex items-center gap-2 self-start sm:self-auto">
+                    <i class="fa-solid fa-plus"></i> 登记新股息
+                </button>
+            </div>
+
+            <!-- 股息统计卡片 -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-gray-900/80 p-4 rounded-2xl border border-gray-800">
+                    <div class="text-xs text-gray-400">累计到账现金股息 (税后)</div>
+                    <div class="text-2xl font-bold font-mono text-amber-400 mt-1" id="div-card-total">$0.00</div>
+                </div>
+                <div class="bg-gray-900/80 p-4 rounded-2xl border border-gray-800">
+                    <div class="text-xs text-gray-400">累计已扣预扣税</div>
+                    <div class="text-2xl font-bold font-mono text-rose-400 mt-1" id="div-card-tax">$0.00</div>
+                </div>
+                <div class="bg-gray-900/80 p-4 rounded-2xl border border-gray-800">
+                    <div class="text-xs text-gray-400">持仓预估年化股息率</div>
+                    <div class="text-2xl font-bold font-mono text-emerald-400 mt-1" id="div-card-yield">0.00%</div>
+                </div>
+            </div>
+
+            <!-- 股息记录表格 -->
+            <div class="bg-gray-900/90 rounded-2xl border border-gray-800 overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-800/60 text-xs text-gray-400 uppercase font-mono border-b border-gray-800">
+                            <tr>
+                                <th class="px-4 py-3.5">入账日期</th>
+                                <th class="px-4 py-3.5">股票代码</th>
+                                <th class="px-4 py-3.5">所属账户</th>
+                                <th class="px-4 py-3.5 text-right">税前股息</th>
+                                <th class="px-4 py-3.5 text-right">预扣税款</th>
+                                <th class="px-4 py-3.5 text-right">实收到账</th>
+                                <th class="px-4 py-3.5 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dividends-table-body" class="divide-y divide-gray-800/60 text-gray-200 font-mono">
+                            <!-- 动态加载股息行 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 页脚 / Footer -->
+    <footer class="mt-auto border-t border-gray-800/80 py-4 text-center text-xs text-gray-500 font-mono">
+        <p>数据更新至 2026年10月24日 (美股收盘) &bull; 基准数据参考: Finnhub &bull; 不构成任何投资建议</p>
+    </footer>
+
+    <!-- ========================================================================= -->
+    <!-- 弹窗部分 / MODALS -->
+    <!-- ========================================================================= -->
+
+    <!-- 弹窗 1: 账户管理 -->
+    <div id="modal-accounts" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-wallet text-blue-400 mr-2"></i>管理投资账户</h3>
+                <button onclick="closeModal('modal-accounts')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="space-y-3">
+                <div class="flex gap-2">
+                    <input type="text" id="new-account-name" placeholder="输入账户名称 (如 Robinhood Gold / 富途)" class="flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                    <button onclick="addAccount()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-medium">添加</button>
+                </div>
+                <div id="account-list" class="space-y-2 max-h-60 overflow-y-auto">
+                    <!-- 动态列表 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗 2: 添加 / 编辑股票持仓 (支持周/月/YTD/年收益率录入) -->
+    <div id="modal-holding" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 class="text-lg font-bold text-white" id="holding-modal-title"><i class="fa-solid fa-plus-circle text-blue-400 mr-2"></i>添加股票持仓</h3>
+                <button onclick="closeModal('modal-holding')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="holding-form" onsubmit="saveHolding(event)" class="space-y-4">
+                <input type="hidden" id="holding-id">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">所属账户</label>
+                        <select id="holding-account" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">股票代码 (Ticker)</label>
+                        <input type="text" id="holding-ticker" required placeholder="如 VGT, TSLA" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 uppercase">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">股票/ETF全称 (选填)</label>
+                    <input type="text" id="holding-name" placeholder="如 Vanguard Info Tech ETF" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">持股数量</label>
+                        <input type="number" step="any" id="holding-shares" required placeholder="80" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">买入均价 ($)</label>
+                        <input type="number" step="any" id="holding-buy-price" required placeholder="420.00" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">当前市价 ($)</label>
+                        <input type="number" step="any" id="holding-current-price" required placeholder="482.50" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 font-mono">
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-800 pt-3">
+                    <label class="block text-xs font-semibold text-blue-400 mb-2">周期回报率录入 (%)</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1">周 1W (%)</label>
+                            <input type="number" step="any" id="holding-1w" placeholder="-3.0" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1">月 1M (%)</label>
+                            <input type="number" step="any" id="holding-1m" placeholder="2.5" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1">年初至今 YTD</label>
+                            <input type="number" step="any" id="holding-ytd" placeholder="26.5" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 mb-1">近一年 1Y</label>
+                            <input type="number" step="any" id="holding-1y" placeholder="32.0" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white font-mono">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">股息率 Dividend Yield (%)</label>
+                    <input type="number" step="any" id="holding-div-yield" placeholder="0.72" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none font-mono">
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-holding')" class="px-4 py-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-xl text-sm">取消</button>
+                    <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl text-sm">保存持仓</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 弹窗 3: 出入金记录 -->
+    <div id="modal-deposit" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-money-bill-transfer text-emerald-400 mr-2"></i>登记资金变动</h3>
+                <button onclick="closeModal('modal-deposit')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="deposit-form" onsubmit="saveDeposit(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">变动类型</label>
+                        <select id="deposit-type" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                            <option value="deposit">入金 (+) Deposit</option>
+                            <option value="withdraw">出金 (-) Withdraw</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">所属账户</label>
+                        <select id="deposit-account" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">金额 ($ USD)</label>
+                        <input type="number" step="any" id="deposit-amount" required placeholder="5000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">变动日期</label>
+                        <input type="date" id="deposit-date" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none font-mono">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">备注说明</label>
+                    <input type="text" id="deposit-note" placeholder="如: 10月月度例行入金" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-deposit')" class="px-4 py-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-xl text-sm">取消</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl text-sm">保存记录</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 弹窗 4: 登记股息 -->
+    <div id="modal-dividend" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-sack-dollar text-amber-400 mr-2"></i>登记股息收入</h3>
+                <button onclick="closeModal('modal-dividend')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="dividend-form" onsubmit="saveDividend(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">股票代码</label>
+                        <input type="text" id="dividend-ticker" required placeholder="如 VGT" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">所属账户</label>
+                        <select id="dividend-account" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">税前股息 ($)</label>
+                        <input type="number" step="any" id="dividend-amount" required placeholder="124.50" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">扣税金额 ($)</label>
+                        <input type="number" step="any" id="dividend-tax" placeholder="12.45" value="0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none font-mono">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">入账日期</label>
+                    <input type="date" id="dividend-date" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none font-mono">
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('modal-dividend')" class="px-4 py-2 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded-xl text-sm">取消</button>
+                    <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-xl text-sm">确认保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 业务逻辑 JAVASCRIPT -->
+    <!-- ========================================================================= -->
+    <script>
+        // 色彩配置 (完美匹配小红书图片颜色)
+        const BAR_COLORS = [
+            '#3b82f6', // 01 VGT (亮蓝色)
+            '#a855f7', // 02 TSM (紫色)
+            '#06b6d4', // 03 SCHG (青蓝色)
+            '#10b981', // 04 QQQM (翡翠绿)
+            '#ef4444', // 05 TSLA (珊瑚红)
+            '#f59e0b', // 06 SMH (琥珀橙)
+            '#6366f1', // Indigo
+            '#ec4899'  // Pink
+        ];
+
+        let currentReturnMetric = 'market_ytd'; // 'market_ytd', 'personal_pnl', 'market_1w'
+        let currentReturnPeriod = 'YTD';
+        let selectedAccountFilter = '全部账户';
+
+        // 示范账户列表
+        let accounts = ['全部账户', '老虎证券', '富途牛牛', '长桥证券'];
+
+        // 示例持仓数据
+        let holdings = [
+            { id: '1', account: '老虎证券', ticker: 'VGT', name: 'Vanguard Info Tech ETF', shares: 100, buyPrice: 420.00, currentPrice: 482.40, w1: -1.2, m1: 3.5, ytd: 26.5, y1: 31.2, divYield: 0.72 },
+            { id: '2', account: '富途牛牛', ticker: 'TSM', name: 'Taiwan Semiconductor', shares: 250, buyPrice: 135.00, currentPrice: 179.20, w1: +3.5, m1: 8.2, ytd: 37.7, y1: 45.0, divYield: 1.35 },
+            { id: '3', account: '老虎证券', ticker: 'SCHG', name: 'Schwab US Large-Cap Growth', shares: 320, buyPrice: 82.50, currentPrice: 98.60, w1: -0.8, m1: 2.1, ytd: 24.1, y1: 28.5, divYield: 0.43 },
+            { id: '4', account: '长桥证券', ticker: 'QQQM', name: 'Invesco NASDAQ 100 ETF', shares: 180, buyPrice: 165.00, currentPrice: 192.30, w1: -0.5, m1: 2.8, ytd: 22.8, y1: 27.1, divYield: 0.58 },
+            { id: '5', account: '富途牛牛', ticker: 'TSLA', name: 'Tesla, Inc.', shares: 80, buyPrice: 210.00, currentPrice: 242.80, w1: +5.4, m1: 12.0, ytd: 18.2, y1: 21.0, divYield: 0.00 },
+            { id: '6', account: '长桥证券', ticker: 'SMH', name: 'VanEck Semiconductor ETF', shares: 90, buyPrice: 215.00, currentPrice: 268.50, w1: +2.1, m1: 6.4, ytd: 42.3, y1: 52.0, divYield: 0.48 }
+        ];
+
+        // 示例出入金记录
+        let deposits = [
+            { id: 'd1', type: 'deposit', account: '老虎证券', amount: 50000, date: '2026-01-15', note: '年初资本追加' },
+            { id: 'd2', type: 'deposit', account: '富途牛牛', amount: 40000, date: '2026-03-10', note: '港股调仓入金' },
+            { id: 'd3', type: 'deposit', account: '长桥证券', amount: 35000, date: '2026-05-20', note: '定投资金' }
+        ];
+
+        // 示例股息记录
+        let dividends = [
+            { id: 'v1', ticker: 'TSM', account: '富途牛牛', amount: 112.50, tax: 11.25, date: '2026-04-12' },
+            { id: 'v2', ticker: 'VGT', account: '老虎证券', amount: 72.00, tax: 7.20, date: '2026-06-25' },
+            { id: 'v3', ticker: 'QQQM', account: '长桥证券', amount: 26.10, tax: 2.61, date: '2026-07-18' }
+        ];
+
+        // 大盘基准数据 (对比 QQQ / VOO)
+        const BENCHMARK_DATA = {
+            '1W': { qqq: -0.9, voo: -0.4 },
+            '1M': { qqq: 2.1, voo: 1.8 },
+            'YTD': { qqq: 21.8, voo: 18.2 },
+            '1Y': { qqq: 25.4, voo: 21.5 }
+        };
+
+        // 数据本地持久化与重置
+        function loadSavedData() {
+            try {
+                const savedAccounts = localStorage.getItem('pm_accounts');
+                const savedHoldings = localStorage.getItem('pm_holdings');
+                const savedDeposits = localStorage.getItem('pm_deposits');
+                const savedDividends = localStorage.getItem('pm_dividends');
+
+                if (savedAccounts) accounts = JSON.parse(savedAccounts);
+                if (savedHoldings) holdings = JSON.parse(savedHoldings);
+                if (savedDeposits) deposits = JSON.parse(savedDeposits);
+                if (savedDividends) dividends = JSON.parse(savedDividends);
+            } catch (e) {
+                console.error("加载本地数据失败，恢复默认值", e);
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('pm_accounts', JSON.stringify(accounts));
+            localStorage.setItem('pm_holdings', JSON.stringify(holdings));
+            localStorage.setItem('pm_deposits', JSON.stringify(deposits));
+            localStorage.setItem('pm_dividends', JSON.stringify(dividends));
+        }
+
+        function resetToSampleData() {
+            if (confirm('确认恢复为示例演示数据？自定义录入的数据将被清除。')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // 初始化日期选择框默认值为今天
+        function setDefaultDates() {
+            const today = new Date().toISOString().split('T')[0];
+            const depDate = document.getElementById('deposit-date');
+            const divDate = document.getElementById('dividend-date');
+            if (depDate) depDate.value = today;
+            if (divDate) divDate.value = today;
+        }
+
+        // 辅助计算与格式化工具函数
+        function formatUSD(val) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+        }
+
+        function formatPercent(val) {
+            const num = parseFloat(val) || 0;
+            return (num >= 0 ? '+' : '') + num.toFixed(1) + '%';
+        }
+
+        // 过滤后获取相应数据
+        function getFilteredHoldings() {
+            if (selectedAccountFilter === '全部账户') return holdings;
+            return holdings.filter(h => h.account === selectedAccountFilter);
+        }
+
+        function getFilteredDeposits() {
+            if (selectedAccountFilter === '全部账户') return deposits;
+            return deposits.filter(d => d.account === selectedAccountFilter);
+        }
+
+        function getFilteredDividends() {
+            if (selectedAccountFilter === '全部账户') return dividends;
+            return dividends.filter(v => v.account === selectedAccountFilter);
+        }
+
+        // 周期切换方法
+        function setReturnPeriod(period) {
+            currentReturnPeriod = period;
+            
+            // 更新按钮激活状态
+            ['1W', '1M', 'YTD', '1Y'].forEach(p => {
+                const btn = document.getElementById(`btn-period-${p}`);
+                if (btn) {
+                    btn.className = p === period ? 'time-pill-active px-3 py-1 rounded-lg text-xs font-medium font-mono transition-all' : 'time-pill-inactive px-3 py-1 rounded-lg text-xs font-medium font-mono transition-all';
+                }
+            });
+
+            // 重新渲染仪表盘与表格
+            renderDashboard();
+            renderHoldingsTable();
+        }
+
+        function setReturnMetric(metric) {
+            currentReturnMetric = metric;
+            
+            // 更新按钮样式
+            ['market_ytd', 'personal_pnl', 'market_1w'].forEach(m => {
+                const btn = document.getElementById(`metric-btn-${m}`);
+                if (btn) {
+                    if (m === metric) {
+                        btn.className = "px-3 py-1.5 rounded-lg transition-all font-medium bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/30 shadow-sm";
+                    } else {
+                        btn.className = "px-3 py-1.5 rounded-lg transition-all font-medium hover:text-slate-200 text-slate-400";
+                    }
+                }
+            });
+
+            // 更新动态表头文字
+            const headerTextMap = {
+                'market_ytd': '年初至今 (YTD)',
+                'personal_pnl': '个人累计盈亏 %',
+                'market_1w': '近 1 周回报率'
+            };
+            const headerElem = document.getElementById('dynamic-column-header');
+            if (headerElem) headerElem.innerText = headerTextMap[metric];
+
+            renderHoldingsTable();
+        }
+
+        // 渲染页面所有板块
+        function renderAll() {
+            renderAccountFilters();
+            renderDashboard();
+            renderHoldingsTable();
+            renderDepositsTable();
+            renderDividendsTable();
+            populateSelectOptions();
+        }
+
+        // 渲染账户筛选按钮
+        function renderAccountFilters() {
+            const container = document.getElementById('account-filter-bar');
+            if (!container) return;
+            container.innerHTML = accounts.map(acc => {
+                const isActive = acc === selectedAccountFilter;
+                return `
+                    <button onclick="setAccountFilter('${acc}')" class="px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all duration-200 ${
+                        isActive 
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-semibold' 
+                        : 'bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700'
+                    }">
+                        ${acc === '全部账户' ? '<i class="fa-solid fa-globe mr-1"></i>' : '<i class="fa-solid fa-wallet mr-1"></i>'}
+                        ${acc}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function setAccountFilter(accName) {
+            selectedAccountFilter = accName;
+            renderAll();
+        }
+
+        // 获取特定持仓在当前所选周期下的回报率
+        function getHoldingReturnForPeriod(holding) {
+            switch(currentReturnPeriod) {
+                case '1W': return holding.w1 || 0;
+                case '1M': return holding.m1 || 0;
+                case '1Y': return holding.y1 || 0;
+                case 'YTD':
+                default:
+                    return holding.ytd || 0;
+            }
+        }
+
+        // 周期文本映射
+        const PERIOD_NAMES = {
+            '1W': '本周收益率 (1W)',
+            '1M': '本月收益率 (1M)',
+            'YTD': '年初至今收益率 (YTD)',
+            '1Y': '近一年收益率 (1Y)'
+        };
+
+        // =========================================================================
+        // 仪表盘渲染逻辑 (DASHBOARD)
+        // =========================================================================
+        function renderDashboard() {
+            const list = getFilteredHoldings();
+            const filteredDeposits = getFilteredDeposits();
+            const filteredDividends = getFilteredDividends();
+
+            let totalMarketValue = 0;
+            let totalCostBasis = 0;
+            let totalAnnualDividend = 0;
+
+            list.forEach(h => {
+                const val = h.shares * h.currentPrice;
+                const cost = h.shares * h.buyPrice;
+                totalMarketValue += val;
+                totalCostBasis += cost;
+                totalAnnualDividend += val * ((h.divYield || 0) / 100);
+            });
+
+            const unrealizedPnl = totalMarketValue - totalCostBasis;
+            const pnlPercent = totalCostBasis > 0 ? (unrealizedPnl / totalCostBasis) * 100 : 0;
+
+            // 本金计算
+            let totalIn = 0, totalOut = 0;
+            filteredDeposits.forEach(d => {
+                if (d.type === 'deposit') totalIn += d.amount;
+                else totalOut += d.amount;
+            });
+            const netCapital = totalIn - totalOut;
+
+            // 累计股息计算
+            let cumulativeDividends = 0;
+            filteredDividends.forEach(div => cumulativeDividends += (div.amount - (div.tax || 0)));
+
+            // 渲染顶部 5 大指标卡片
+            const totalAssetsElem = document.getElementById('dash-total-assets');
+            if (totalAssetsElem) totalAssetsElem.innerText = formatUSD(totalMarketValue);
+
+            const netInvestedElem = document.getElementById('dash-net-invested');
+            if (netInvestedElem) netInvestedElem.innerText = formatUSD(netCapital > 0 ? netCapital : totalCostBasis);
+
+            const pnlElem = document.getElementById('dash-unrealized-pnl');
+            if (pnlElem) {
+                pnlElem.innerText = (unrealizedPnl >= 0 ? '+' : '') + formatUSD(unrealizedPnl);
+                pnlElem.className = `text-2xl font-bold font-mono mt-1 ${unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            }
+
+            const pnlPctElem = document.getElementById('dash-pnl-percent');
+            if (pnlPctElem) {
+                pnlPctElem.innerText = formatPercent(pnlPercent);
+                pnlPctElem.className = `font-mono font-semibold ${pnlPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            }
+
+            // 计算当前周期整体组合收益率加权平均
+            let portfolioPeriodReturn = 0;
+            if (totalMarketValue > 0) {
+                portfolioPeriodReturn = list.reduce((acc, item) => {
+                    const weight = (item.shares * item.currentPrice) / totalMarketValue;
+                    return acc + (weight * getHoldingReturnForPeriod(item));
+                }, 0);
+            }
+
+            const periodTitleElem = document.getElementById('dash-period-title');
+            if (periodTitleElem) periodTitleElem.innerText = PERIOD_NAMES[currentReturnPeriod];
+
+            const periodTagElem = document.getElementById('dash-period-tag');
+            if (periodTagElem) periodTagElem.innerText = currentReturnPeriod;
+            
+            const periodRetElem = document.getElementById('dash-selected-period-return');
+            if (periodRetElem) {
+                periodRetElem.innerText = formatPercent(portfolioPeriodReturn);
+                periodRetElem.className = `text-2xl font-bold font-mono mt-1 ${portfolioPeriodReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            }
+
+            // 大盘跑赢/跑输 Alpha
+            const benchInfo = BENCHMARK_DATA[currentReturnPeriod] || BENCHMARK_DATA['YTD'];
+            const alpha = portfolioPeriodReturn - benchInfo.qqq;
+            const alphaElem = document.getElementById('dash-alpha-return');
+            if (alphaElem) {
+                alphaElem.innerText = (alpha >= 0 ? '+' : '') + alpha.toFixed(1) + '%';
+                alphaElem.className = `text-2xl font-bold font-mono mt-1 ${alpha >= 0 ? 'text-amber-400' : 'text-rose-400'}`;
+            }
+
+            const totalDivsElem = document.getElementById('dash-total-dividends');
+            if (totalDivsElem) totalDivsElem.innerText = formatUSD(cumulativeDividends);
+
+            const annualDivsElem = document.getElementById('dash-annual-dividends');
+            if (annualDivsElem) annualDivsElem.innerText = formatUSD(totalAnnualDividend);
+
+            const countSubElem = document.getElementById('dash-holding-count-sub');
+            if (countSubElem) countSubElem.innerText = `(${list.length} 个持仓标的)`;
+
+            // 1. 渲染前列持仓占比柱状图
+            renderTopHoldingsBars(list, totalMarketValue);
+
+            // 2. 渲染各个子账户资产卡片
+            renderAccountSummaryCards();
+        }
+
+        // 渲染持仓占比柱状图
+        function renderTopHoldingsBars(list, totalMarketValue) {
+            const container = document.getElementById('top-holdings-container');
+            if (!container) return;
+
+            if (!list || list.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-gray-500 font-mono text-sm">暂无持仓数据，请点击“持仓明细”进行添加</div>`;
+                return;
+            }
+
+            // 按持仓市值降序排列
+            const sorted = [...list].sort((a, b) => (b.shares * b.currentPrice) - (a.shares * a.currentPrice));
+            const topHoldings = sorted.slice(0, 8); // 显示前 8 大持仓
+
+            let top6WeightSum = 0;
+
+            const htmlRows = topHoldings.map((item, index) => {
+                const val = item.shares * item.currentPrice;
+                const weight = totalMarketValue > 0 ? (val / totalMarketValue) * 100 : 0;
+                if (index < 6) top6WeightSum += weight;
+
+                const barColor = BAR_COLORS[index % BAR_COLORS.length];
+                const currentPeriodRet = getHoldingReturnForPeriod(item);
+
+                return `
+                    <div class="group flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl hover:bg-gray-800/40 transition border border-transparent hover:border-gray-800">
+                        <!-- 代码与名称 -->
+                        <div class="flex items-center gap-3 min-w-[210px]">
+                            <span class="text-xs font-mono font-bold text-gray-500 w-5">${String(index + 1).padStart(2, '0')}</span>
+                            <div>
+                                <div class="font-bold font-mono text-base tracking-wide flex items-center gap-2" style="color: ${barColor}">
+                                    ${item.ticker}
+                                </div>
+                                <div class="text-xs text-gray-400 truncate max-w-[160px] sm:max-w-[190px]">${item.name || item.ticker}</div>
+                            </div>
+                        </div>
+
+                        <!-- 占比条 (Progress Bar) -->
+                        <div class="flex-grow my-1 sm:my-0 px-0 sm:px-4">
+                            <div class="w-full bg-gray-800/80 rounded-full h-3 overflow-hidden p-0.5 border border-gray-800">
+                                <div class="h-full rounded-full transition-all duration-700 ease-out" 
+                                     style="width: ${Math.min(weight * 3.8, 100)}%; background-color: ${barColor}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 权重% 与 选中周期的回报率胶囊标签 -->
+                        <div class="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 font-mono text-xs">
+                            <div class="text-right">
+                                <span class="text-gray-400 text-[10px] uppercase block sm:hidden">持仓权重</span>
+                                <span class="text-base font-bold text-white">${weight.toFixed(1)}%</span>
+                            </div>
+
+                            <!-- 回报率胶囊标签 -->
+                            <div class="min-w-[85px] text-right">
+                                <span class="text-gray-400 text-[10px] uppercase block sm:hidden">${currentReturnPeriod} 回报率</span>
+                                <span class="px-2.5 py-1 rounded-full font-bold inline-block text-xs ${
+                                    currentPeriodRet >= 0 
+                                    ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 shadow-sm' 
+                                    : 'bg-rose-950/80 text-rose-300 border border-rose-800/60 shadow-sm'
+                                }">
+                                    ${formatPercent(currentPeriodRet)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = htmlRows;
+
+            // 更新前 6 大集中度标签
+            const top6Badge = document.getElementById('top6-concentration-badge');
+            if (top6Badge) {
+                top6Badge.innerText = `前 ${Math.min(6, topHoldings.length)} 大持仓占比 = ${top6WeightSum.toFixed(0)}% 组合资产`;
+            }
+        }
+
+        // 渲染各账户资产分布总结
+        function renderAccountSummaryCards() {
+            const container = document.getElementById('account-cards-summary');
+            if (!container) return;
+            const userAccounts = accounts.filter(a => a !== '全部账户');
+
+            let overallMarketVal = holdings.reduce((sum, h) => sum + (h.shares * h.currentPrice), 0);
+
+            container.innerHTML = userAccounts.map(acc => {
+                const accHoldings = holdings.filter(h => h.account === acc);
+                const accVal = accHoldings.reduce((sum, h) => sum + (h.shares * h.currentPrice), 0);
+                const accCost = accHoldings.reduce((sum, h) => sum + (h.shares * h.buyPrice), 0);
+                const accPnl = accVal - accCost;
+                const accWeight = overallMarketVal > 0 ? (accVal / overallMarketVal) * 100 : 0;
+
+                return `
+                    <div class="bg-gray-800/50 rounded-xl p-3 border border-gray-800 flex justify-between items-center hover:bg-gray-800/80 transition">
+                        <div>
+                            <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                                <i class="fa-solid fa-wallet text-blue-400 text-[10px]"></i>
+                                ${acc}
+                            </div>
+                            <div class="text-[11px] text-gray-400 mt-0.5 font-mono">
+                                持仓: ${accHoldings.length} 个标的
+                            </div>
+                        </div>
+                        <div class="text-right font-mono">
+                            <div class="text-sm font-bold text-white">${formatUSD(accVal)}</div>
+                            <div class="text-[11px] ${accPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                                ${accPnl >= 0 ? '+' : ''}${formatUSD(accPnl)} (${accWeight.toFixed(1)}%)
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // =========================================================================
+        // 持仓明细表格 (HOLDINGS TABLE)
+        // =========================================================================
+        function renderHoldingsTable() {
+            const tbody = document.getElementById('holdings-table-body');
+            if (!tbody) return;
+
+            const list = getFilteredHoldings();
+            const headerElem = document.getElementById('th-period-header');
+            if (headerElem) headerElem.innerText = `回报率 (${currentReturnPeriod})`;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-500 font-sans">暂无股票持仓记录，请添加</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(h => {
+                const totalCost = h.shares * h.buyPrice;
+                const currentVal = h.shares * h.currentPrice;
+                const pnl = currentVal - totalCost;
+                const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+                const periodReturn = getHoldingReturnForPeriod(h);
+
+                return `
+                    <tr class="hover:bg-gray-800/40 transition">
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-blue-400 font-mono text-base">${h.ticker}</div>
+                            <div class="text-xs text-gray-400 font-sans">${h.name || '-'}</div>
+                        </td>
+                        <td class="px-4 py-3 text-xs">
+                            <span class="bg-gray-800 text-gray-300 px-2 py-1 rounded-md border border-gray-700 font-sans">${h.account}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-mono">${h.shares}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-300">$${h.buyPrice.toFixed(2)}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold text-white">$${h.currentPrice.toFixed(2)}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-300">${formatUSD(totalCost)}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold text-white">${formatUSD(currentVal)}</td>
+                        <td class="px-4 py-3 text-right font-mono">
+                            <div class="${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+                                ${pnl >= 0 ? '+' : ''}${formatUSD(pnl)}
+                            </div>
+                            <div class="text-[11px] ${pnlPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                                ${formatPercent(pnlPct)}
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-right font-mono">
+                            <span class="px-2 py-0.5 rounded font-semibold text-xs ${periodReturn >= 0 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'}">
+                                ${formatPercent(periodReturn)}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-center font-sans">
+                            <div class="flex items-center justify-center space-x-2">
+                                <button onclick="editHolding('${h.id}')" class="text-gray-400 hover:text-blue-400 text-xs p-1" title="编辑持仓"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button onclick="deleteHolding('${h.id}')" class="text-gray-400 hover:text-rose-400 text-xs p-1" title="删除持仓"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // =========================================================================
+        // 出入金表格 (DEPOSITS TABLE)
+        // =========================================================================
+        function renderDepositsTable() {
+            const tbody = document.getElementById('deposits-table-body');
+            if (!tbody) return;
+
+            const list = getFilteredDeposits();
+
+            let totalIn = 0, totalOut = 0;
+            list.forEach(d => {
+                if (d.type === 'deposit') totalIn += d.amount;
+                else totalOut += d.amount;
+            });
+
+            const cfIn = document.getElementById('cf-total-in');
+            if (cfIn) cfIn.innerText = formatUSD(totalIn);
+
+            const cfOut = document.getElementById('cf-total-out');
+            if (cfOut) cfOut.innerText = formatUSD(totalOut);
+
+            const cfNet = document.getElementById('cf-net-capital');
+            if (cfNet) cfNet.innerText = formatUSD(totalIn - totalOut);
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500 font-sans">暂无出入金记录</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(d => {
+                const isDeposit = d.type === 'deposit';
+                return `
+                    <tr class="hover:bg-gray-800/40 transition">
+                        <td class="px-4 py-3 font-mono text-xs text-gray-300">${d.date}</td>
+                        <td class="px-4 py-3 text-xs">
+                            <span class="px-2 py-0.5 rounded-md font-semibold ${isDeposit ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'}">
+                                ${isDeposit ? '入金 (+)' : '出金 (-)'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-xs text-gray-300 font-sans">${d.account}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold ${isDeposit ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${isDeposit ? '+' : '-'}${formatUSD(d.amount)}
+                        </td>
+                        <td class="px-4 py-3 text-xs text-gray-400">${d.note || '-'}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="deleteDeposit('${d.id}')" class="text-gray-500 hover:text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // =========================================================================
+        // 股息记录表格 (DIVIDENDS TABLE)
+        // =========================================================================
+        function renderDividendsTable() {
+            const tbody = document.getElementById('dividends-table-body');
+            if (!tbody) return;
+
+            const list = getFilteredDividends();
+
+            let totalGross = 0, totalTax = 0;
+            list.forEach(v => {
+                totalGross += v.amount;
+                totalTax += (v.tax || 0);
+            });
+            const netDividend = totalGross - totalTax;
+
+            const divTotal = document.getElementById('div-card-total');
+            if (divTotal) divTotal.innerText = formatUSD(netDividend);
+
+            const divTax = document.getElementById('div-card-tax');
+            if (divTax) divTax.innerText = formatUSD(totalTax);
+
+            const currentFilteredHoldings = getFilteredHoldings();
+            const totalMV = currentFilteredHoldings.reduce((sum, h) => sum + (h.shares * h.currentPrice), 0);
+            const annualExpectedDiv = currentFilteredHoldings.reduce((sum, h) => sum + (h.shares * h.currentPrice * ((h.divYield || 0)/100)), 0);
+            const estYield = totalMV > 0 ? (annualExpectedDiv / totalMV) * 100 : 0;
+
+            const divYield = document.getElementById('div-card-yield');
+            if (divYield) divYield.innerText = `${estYield.toFixed(2)}%`;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-500 font-sans">暂无股息收入记录</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(v => {
+                const net = v.amount - (v.tax || 0);
+                return `
+                    <tr class="hover:bg-gray-800/40 transition">
+                        <td class="px-4 py-3 text-xs text-gray-300">${v.date}</td>
+                        <td class="px-4 py-3 font-bold text-amber-400">${v.ticker}</td>
+                        <td class="px-4 py-3 text-xs text-gray-300 font-sans">${v.account}</td>
+                        <td class="px-4 py-3 text-right text-gray-300">${formatUSD(v.amount)}</td>
+                        <td class="px-4 py-3 text-right text-rose-400">-${formatUSD(v.tax || 0)}</td>
+                        <td class="px-4 py-3 text-right font-bold text-emerald-400">${formatUSD(net)}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="deleteDividend('${v.id}')" class="text-gray-500 hover:text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function populateSelectOptions() {
+            const selectable = accounts.filter(a => a !== '全部账户');
+            const optionsHtml = selectable.map(a => `<option value="${a}">${a}</option>`).join('');
+
+            const hAcc = document.getElementById('holding-account');
+            const depAcc = document.getElementById('deposit-account');
+            const divAcc = document.getElementById('dividend-account');
+
+            if (hAcc) hAcc.innerHTML = optionsHtml;
+            if (depAcc) depAcc.innerHTML = optionsHtml;
+            if (divAcc) divAcc.innerHTML = optionsHtml;
+        }
+
+        // 持仓编辑/新增逻辑
+        function openHoldingModal(holdingId = null) {
+            const modal = document.getElementById('modal-holding');
+            const form = document.getElementById('holding-form');
+            if (form) form.reset();
+
+            if (holdingId) {
+                const h = holdings.find(item => item.id === holdingId);
+                if (h) {
+                    const titleElem = document.getElementById('holding-modal-title');
+                    if (titleElem) titleElem.innerText = '编辑股票持仓';
+                    document.getElementById('holding-id').value = h.id;
+                    document.getElementById('holding-account').value = h.account;
+                    document.getElementById('holding-ticker').value = h.ticker;
+                    document.getElementById('holding-name').value = h.name || '';
+                    document.getElementById('holding-shares').value = h.shares;
+                    document.getElementById('holding-buy-price').value = h.buyPrice;
+                    document.getElementById('holding-current-price').value = h.currentPrice;
+                    document.getElementById('holding-1w').value = h.w1 || 0;
+                    document.getElementById('holding-1m').value = h.m1 || 0;
+                    document.getElementById('holding-ytd').value = h.ytd || 0;
+                    document.getElementById('holding-1y').value = h.y1 || 0;
+                    document.getElementById('holding-div-yield').value = h.divYield || 0;
+                }
+            } else {
+                const titleElem = document.getElementById('holding-modal-title');
+                if (titleElem) titleElem.innerText = '添加股票持仓';
+                document.getElementById('holding-id').value = '';
+            }
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function saveHolding(e) {
+            e.preventDefault();
+            const id = document.getElementById('holding-id').value;
+            const newHolding = {
+                id: id || Date.now().toString(),
+                account: document.getElementById('holding-account').value,
+                ticker: document.getElementById('holding-ticker').value.toUpperCase().trim(),
+                name: document.getElementById('holding-name').value.trim(),
+                shares: parseFloat(document.getElementById('holding-shares').value),
+                buyPrice: parseFloat(document.getElementById('holding-buy-price').value),
+                currentPrice: parseFloat(document.getElementById('holding-current-price').value),
+                w1: parseFloat(document.getElementById('holding-1w').value) || 0,
+                m1: parseFloat(document.getElementById('holding-1m').value) || 0,
+                ytd: parseFloat(document.getElementById('holding-ytd').value) || 0,
+                y1: parseFloat(document.getElementById('holding-1y').value) || 0,
+                divYield: parseFloat(document.getElementById('holding-div-yield').value) || 0
+            };
+
+            if (id) {
+                const idx = holdings.findIndex(h => h.id === id);
+                if (idx !== -1) holdings[idx] = newHolding;
+            } else {
+                holdings.push(newHolding);
+            }
+
+            saveData();
+            renderAll();
+            closeModal('modal-holding');
+        }
+
+        function editHolding(id) {
+            openHoldingModal(id);
+        }
+
+        function deleteHolding(id) {
+            if (confirm('确认删除该笔股票持仓记录？')) {
+                holdings = holdings.filter(h => h.id !== id);
+                saveData();
+                renderAll();
+            }
+        }
+
+        // 出入金管理
+        function openDepositModal() {
+            const form = document.getElementById('deposit-form');
+            if (form) form.reset();
+            setDefaultDates();
+            const modal = document.getElementById('modal-deposit');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function saveDeposit(e) {
+            e.preventDefault();
+            const item = {
+                id: Date.now().toString(),
+                type: document.getElementById('deposit-type').value,
+                account: document.getElementById('deposit-account').value,
+                amount: parseFloat(document.getElementById('deposit-amount').value),
+                date: document.getElementById('deposit-date').value,
+                note: document.getElementById('deposit-note').value.trim()
+            };
+            deposits.unshift(item);
+            saveData();
+            renderAll();
+            closeModal('modal-deposit');
+        }
+
+        function deleteDeposit(id) {
+            if (confirm('删除该笔出入金记录？')) {
+                deposits = deposits.filter(d => d.id !== id);
+                saveData();
+                renderAll();
+            }
+        }
+
+        // 股息管理
+        function openDividendModal() {
+            const form = document.getElementById('dividend-form');
+            if (form) form.reset();
+            setDefaultDates();
+            const modal = document.getElementById('modal-dividend');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function saveDividend(e) {
+            e.preventDefault();
+            const item = {
+                id: Date.now().toString(),
+                ticker: document.getElementById('dividend-ticker').value.toUpperCase().trim(),
+                account: document.getElementById('dividend-account').value,
+                amount: parseFloat(document.getElementById('dividend-amount').value),
+                tax: parseFloat(document.getElementById('dividend-tax').value) || 0,
+                date: document.getElementById('dividend-date').value
+            };
+            dividends.unshift(item);
+            saveData();
+            renderAll();
+            closeModal('modal-dividend');
+        }
+
+        function deleteDividend(id) {
+            if (confirm('删除该笔股息记录？')) {
+                dividends = dividends.filter(v => v.id !== id);
+                saveData();
+                renderAll();
+            }
+        }
+
+        // 账户管理
+        function openAccountModal() {
+            renderAccountListInModal();
+            const modal = document.getElementById('modal-accounts');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function renderAccountListInModal() {
+            const listElem = document.getElementById('account-list');
+            if (!listElem) return;
+            const customAccounts = accounts.filter(a => a !== '全部账户');
+
+            listElem.innerHTML = customAccounts.map(acc => `
+                <div class="flex items-center justify-between bg-gray-800 p-2.5 rounded-xl border border-gray-700">
+                    <span class="text-sm text-gray-200 font-medium"><i class="fa-solid fa-wallet text-blue-400 mr-2"></i>${acc}</span>
+                    <button onclick="deleteAccount('${acc}')" class="text-gray-400 hover:text-rose-400 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function addAccount() {
+            const input = document.getElementById('new-account-name');
+            if (!input) return;
+            const name = input.value.trim();
+            if (name && !accounts.includes(name)) {
+                accounts.push(name);
+                input.value = '';
+                saveData();
+                renderAll();
+                renderAccountListInModal();
+            }
+        }
+
+        function deleteAccount(name) {
+            if (accounts.length <= 2) {
+                alert('请至少保留一个证券账户！');
+                return;
+            }
+            if (confirm(`确认删除账户 "${name}"？`)) {
+                accounts = accounts.filter(a => a !== name);
+                if (selectedAccountFilter === name) selectedAccountFilter = '全部账户';
+                saveData();
+                renderAll();
+                renderAccountListInModal();
+            }
+        }
+
+        // Tab 标签页切换逻辑
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            if (activeTab) activeTab.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-gray-200 transition-all duration-200 flex items-center gap-2';
+            });
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) {
+                activeNav.className = 'nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-md';
+            }
+
+            document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+                btn.className = 'mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-gray-400 hover:text-gray-200 font-medium';
+            });
+            const activeMobileNav = document.getElementById(`m-nav-${tabId}`);
+            if (activeMobileNav) {
+                activeMobileNav.className = 'mobile-nav-btn flex flex-col items-center py-1 px-3 text-xs text-blue-400 font-medium';
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // 初始化加载
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSavedData();
+            setDefaultDates();
+            renderAll();
+        });
+    </script>
+</body>
+</html>
